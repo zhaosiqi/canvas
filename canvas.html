@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>画板</title>
+    <script src="jquery.js"></script>
+    <script src="canvas.js"></script>
+</head>
+<style>
+    html,body{
+        width: 100%;
+        height:100%;
+        background:url("banner4.jpg") no-repeat center;
+        background-size: 100% 100%;
+    }
+    .windowbox{
+        width:1000px;
+        height:600px;
+        background:#FDF8E8;
+        border: 1px solid #000;
+        margin:auto;
+    }
+    nav{
+        width: 100%;
+        height:5%;
+        background:#AA8F6F;
+        border-bottom: 1px solid #000;
+    }
+    nav>.first{
+        box-sizing: border-box;
+        width: 14.28%;
+        height:100%;
+        border-right: 1px solid #000;
+        text-align: center;
+        line-height: 30px;
+        float: left;
+
+    }
+    nav>.first:last-child{
+        border-right: none;
+    }
+    aside{
+        width: 14.28%;
+        height:95%;
+        float: left;
+        box-sizing: border-box;
+        overflow: auto;
+        border-right: 1px solid #000;
+
+    }
+    .father:not(:first-child){
+        display: none;
+    }
+
+    .father{
+        text-align: center;
+        line-height: 30px;
+        overflow: hidden;
+        /*padding: 0 30px;*/
+    }
+
+    .canvas{
+        width: 85.7%;
+        height:95%;
+        float: left;
+        position: relative;
+    }
+    .copy{
+        width:100% ;
+        height:100%;
+        position: absolute;
+        top:0;
+        left:0;
+        z-index:10;
+    }
+    .eraser{
+        width: 10px;
+        height:10px;
+        border: 1px solid #ccc;
+        /*background: #ccc;*/
+        position: absolute;
+        /*top:0;*/
+        /*left:0;*/
+        z-index: 8;
+        display:none;
+    }
+    input[type="number"]{
+        width: 100px;
+    }
+    input[type="file"]{
+        position: absolute;
+        top:95px;
+        left:35px;
+        opacity: 0;
+    }
+    .drag{
+        border: 1px dashed black;
+        position: absolute;
+        z-index: 8;
+    }
+</style>
+<script>
+$(function(){
+    var canvasbox=document.querySelector(".canvas");
+    var cx=canvasbox.offsetWidth;
+    var cy=canvasbox.offsetHeight;
+    var canvas=document.querySelector("canvas");
+    var cobj=canvas.getContext("2d");
+    var copy=document.querySelector(".copy");
+    var dragObj=document.querySelector(".drag");
+    canvas.width=cx;
+    canvas.height=cy;
+    var drawObj=new shape(canvas,copy,cobj);
+    drawObj.draw();
+
+    $(".first").click(function(){
+        var index=$(".first").index(this);
+        $(".first").css({
+            background:"#AA8F6F",
+            color:"#000"
+        }).eq(index).css({
+            background:"#622D17",
+            color:"#fff"
+        })
+        $(".father").hide().eq(index).toggle();
+        if(index==5){
+            var eraObj=$(".eraser")[0];
+            drawObj.eraser(eraObj);
+            isback=true;
+        }else{
+            isback=false;
+            $(".eraser")[0].style.display="none";
+            copy.onmousemove=null;
+            drawObj.draw();
+        }
+    })
+    /*画图*/
+    $(".father:eq(1) div").click(function(){
+        var index=$(".father:eq(1) div").index(this);
+        $(".father:eq(1) div").css({
+            background:"#FDF8E8",
+            color:"#000"
+        }).eq(index).css({
+            background:"#987E60",
+            color:"#fff"
+        })
+        var fn=$(this).attr("data-role");
+        if(fn=="polygon"){
+            drawObj.polnum=prompt("请输入边数",drawObj.polnum)
+        }
+        if(fn=="star"){
+            drawObj.starnum=prompt("请输入边数",drawObj.starnum)
+        }
+        if(fn!="pen"){
+            drawObj.type = fn;
+            drawObj.draw();
+        }else{
+            drawObj.pen();
+        }
+
+    })
+    /*颜色*/
+    $(".father:eq(2) input").change(function(){
+
+        drawObj[$(this).attr("data-role")]=$(this).val();
+        drawObj.draw();
+
+    })
+    /*线宽*/
+    $(".father:eq(3) div").click(function(){
+        var index=$(".father:eq(3) div").index(this);
+        $(".father:eq(3) div").css({
+            background:"#FDF8E8",
+            color:"#000"
+        }).eq(index).css({
+            background:"#987E60",
+            color:"#000"
+        })
+        var num=$(this).attr("data-role");
+        if(num!=="null") {
+            drawObj.lineWidth =num;
+            drawObj.draw();
+        }
+    })
+    $(".father:eq(3) div input").change(function(){
+        var num=$(this).val();
+        drawObj.lineWidth =num;
+        drawObj.draw();
+
+    })
+    /*作图方式*/
+    $(".father:eq(4) div").click(function(){
+        var index=$(".father:eq(4) div").index(this);
+        $(".father:eq(4) div").css({
+            background:"#FDF8E8",
+            color:"#000"
+        }).eq(index).css({
+            background:"#987E60",
+            color:"#000"
+        })
+        var fn=$(this).attr("data-role");
+        drawObj.style=fn;
+        drawObj.draw();
+    })
+    /*文件*/
+    $(".father:eq(0) div").click(function(){
+        var index=$(".father:eq(0) div").index(this);
+        if(index==0){
+            /*新建*/
+            if(drawObj.history.length>0){
+                var yes=confirm("是否保存");
+                if(yes){
+                    var url=canvas.toDataURL();
+                    var newurl=url.replace("image/png","stream/octet")
+                    location.href=newurl;
+                }
+            }
+            cobj.clearRect(0,0,canvas.width,canvas.height);
+            drawObj.history=[];
+
+        }else if(index==2){
+            //返回
+            if(drawObj.history.length==0){
+                //no
+                cobj.clearRect(0,0,canvas.width,canvas.height);
+                setTimeout(function(){
+                    alert("不能再撤回");
+                },10)
+            }else{
+                if (drawObj.isback) {
+                    if (drawObj.history.length == 1) {
+                        drawObj.history.pop();
+                        cobj.clearRect(0, 0, canvas.width, canvas.height);
+                    } else {
+                        drawObj.history.pop();
+                        cobj.putImageData(drawObj.history[drawObj.history.length-1], 0, 0);
+                    }
+                } else {
+                    drawObj.history.pop();
+                    cobj.putImageData(drawObj.history[drawObj.history.length-1], 0, 0);
+                }
+
+                drawObj.isback = false;
+
+            }
+        }else if(index==1) {
+            /*保存*/
+            var url=canvas.toDataURL();
+            var newurl=url.replace("image/png","stream/octet")
+            location.href=newurl;
+
+        }
+        else if(index==4){
+            drawObj.drag(dragObj);
+
+        }
+    })
+    $(".father:eq(0) input").click(function(){
+            var file=document.querySelector("input[type='file']");
+            var img=document.querySelector("img");
+            file.onchange=function(){
+                var fileObj=this.files[0];
+                var reader=new FileReader();
+                reader.readAsDataURL(fileObj);
+                reader.onload=function(e){
+                    img.src= e.target.result;
+                    cobj.drawImage(img,0,0,600,600);
+                    dataobj=cobj.getImageData(0,0,600,600);
+                    drawObj.history.push(cobj.getImageData(0,0,600,600));
+                }
+            }
+
+    })
+    /*橡皮*/
+    $(".father:eq(5) div").click(function(){
+        var index=$(".father:eq(5) div").index(this);
+        $(".father:eq(5) div").css({
+            background:"#FDF8E8",
+            color:"#000"
+        }).eq(index).css({
+            background:"#987E60",
+            color:"#000"
+        })
+        var eraObj=$(".eraser")[0];
+
+        var num=$(this).attr("data-role");
+        if(num!=="null") {
+            drawObj.erasize =num;
+            eraObj.style.width=num+"px";
+            eraObj.style.height=num+"px";
+            drawObj.eraser(eraObj);
+        }
+
+    })
+    $(".father:eq(5) div input").change(function(){
+        var eraObj=$(".eraser")[0];
+        var num=$(this).val();
+        drawObj.erasize =num;
+        eraObj.style.width=num+"px";
+        eraObj.style.height=num+"px";
+        drawObj.eraser(eraObj);
+
+    })
+    /*图像处理*/
+    $(".father:eq(6) div").click(function(){
+        var index=$(".father:eq(6) div").index(this);
+        $(".father:eq(6) div").css({
+            background:"#FDF8E8",
+            color:"#000"
+        }).eq(index).css({
+            background:"#987E60",
+            color:"#000"
+        })
+        var attr=this.getAttribute("data-role")
+        if(attr=="blur"){
+            drawObj.blur(dataobj,5,0,0);
+        }else if(attr=="fx"){
+            drawObj.fx(dataobj,0,0)
+        }else if(attr=="msk"){
+            drawObj.msk(dataobj,50,0,0)
+        }
+        else if(attr=="yt"){
+            var img=document.querySelector("img");
+            cobj.drawImage(img,0,0,600,600);
+        }
+    })
+})
+</script>
+
+<body>
+<div class="windowbox">
+    <nav>
+        <div class="first">文件</div>
+        <div class="first">画图</div>
+        <div class="first">颜色</div>
+        <div class="first">线宽</div>
+        <div class="first">作图方式</div>
+        <div class="first">橡皮</div>
+        <div class="first">图像处理</div>
+    </nav>
+    <aside>
+        <div class="father" style="position: relative">
+            <div>新建</div>
+            <div>保存</div>
+            <div>撤销</div>
+            <div>打开</div>
+            <input type="file">
+            <div>拖拽</div>
+
+
+        </div>
+        <div class="father">
+            <div data-role="line">线</div>
+            <div data-role="rect">矩形</div>
+            <div data-role="arc">圆</div>
+            <div data-role="polygon">多边形</div>
+            <div data-role="star">多角形</div>
+            <div data-role="pen">铅笔</div>
+        </div>
+        <div class="father">
+            边框色：<input type="color" data-role="strokeStyle"><br/>
+            填充色：<input type="color" data-role="fillStyle">
+        </div>
+        <div class="father">
+            <div data-role="1">细体</div>
+            <div data-role="3">标准</div>
+            <div data-role="5">粗体</div>
+            <div data-role="null">自定义：<br/>
+                <input type="number">
+            </div>
+        </div>
+        <div class="father">
+            <div data-role="stroke">描边</div>
+            <div data-role="fill">填充</div>
+        </div>
+        <div class="father">
+            <div data-role="10">小橡皮</div>
+            <div data-role="20">大橡皮</div>
+            <div data-role="null">自定义：<br/>
+                <input type="number">
+            </div>
+        </div>
+        <div class="father">
+            <div data-role="fx">反相</div>
+            <div data-role="msk">马赛克</div>
+            <div data-role="blur">模糊</div>
+            <div data-role="yt">原图</div>
+        </div>
+
+    </aside>
+    <div class="canvas">
+        <div class="eraser"></div>
+        <div class="copy"></div>
+        <div class="drag"></div>
+        <canvas></canvas>
+
+    </div>
+</div>
+<img src="" alt="" hidden>
+</body>
+</html>
